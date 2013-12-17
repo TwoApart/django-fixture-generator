@@ -63,9 +63,14 @@ class Command(BaseCommand):
         opt for opt in DumpDataCommand.option_list
         if "--database" not in opt._long_opts and "--exclude" not in opt._long_opts
     )
+    option_list = option_list + (
+        make_option("--database",  default=False, dest="database", type="string", 
+            help="Use specific a specific database for fixtures"),
+    )
     args = "app_label.fixture"
 
     def handle(self, fixture, **options):
+
         available_fixtures = {}
         for app in settings.INSTALLED_APPS:
             try:
@@ -90,10 +95,17 @@ class Command(BaseCommand):
 
         requirements, models = linearize_requirements(available_fixtures, fixture)
 
-        settings.DATABASES[FIXTURE_DATABASE] = {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": ":memory:",
-        }
+
+        database = options.get('database', False)
+
+        if not database:
+            settings.DATABASES[FIXTURE_DATABASE] = {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": ":memory:",
+            }
+        else:
+            settings.DATABASES[FIXTURE_DATABASE] = settings.DATABASES[database]
+
         old_routers = router.routers
         router.routers = [FixtureRouter(models)]
         try:
